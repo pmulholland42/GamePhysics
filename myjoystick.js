@@ -9,19 +9,29 @@ var touchable = 'createTouch' in document;
 var touch;
 var touching = false;
 var width = window.innerWidth;
+var height = window.innerHeight;
 var halfX = (width/2);
 var stickRadius = 80;	// The max distance of the stick from the base
 var circleRadius = 65;	// The radius of the stick circles
 
-var playerX = halfX;
-var height = window.innerHeight;
-var playerY = (height/2);
+// Physics variables
+var playerX = width/2;
+var playerY = height/2;
 var playerXSpeed = 0;
 var playerYSpeed = 0;
-var gravity = .8;
-// hi there
-var friction = .1;
-var grounded = 0;
+var gravity = 0.8;		// Downward acceleration
+var friction = 0.40;	// Coefficient of friction
+var grounded = 0;		// True when player is on the ground
+var wallBounce = .50;	// Wall bounciness coefficient
+var floorBounce = 0;	// Floor bounciness coefficient
+var maxSpeed = 8;		// Max horizontal speed for the player when on ground
+var floorHeight = 70; 	// Pixels above bottom of window
+var jumps = 0;			// Number of jumps the player has made while in the air
+var maxJumps = 2;		// Single, double, or triple jump, etc.
+var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
+
+// Keyboard input
+//document.onkeydown = checkKey;
 
 // Initial the canvas
 setupCanvas();
@@ -81,6 +91,18 @@ function draw() {
 	// Erase the entire canvas
     c.clearRect(0, 0, canvas.width, canvas.height);
 	c.lineWidth = "10";
+	
+	c.fillText('X velocity: '+playerXSpeed, 10, 100);
+	c.fillText('X position: '+playerX, 10, 120);
+	c.fillText('Y velocity: '+(-playerYSpeed), 10, 160);
+	c.fillText('Y position: '+(height-playerY), 10, 180);
+	c.fillText('On ground: '+grounded, 10, 220);
+	c.fillText('Jumps: '+jumps, 10, 240);
+	c.fillText('W: '+heldKeys[87], 10, 260);
+	c.fillText('A: '+heldKeys[65], 10, 280);
+	c.fillText('S: '+heldKeys[83], 10, 300);
+	c.fillText('D: '+heldKeys[68], 10, 320);
+	
 	// If touching the left half of the window
     if ((touching && touch.clientX < halfX) || (mouseDown && baseX < halfX)) {
 		// Get the digital coordinates
@@ -97,8 +119,6 @@ function draw() {
         c.fillText('digy: '+digy, 10, 40);
         c.fillText('anlx: '+anlx, 10, 60);
         c.fillText('anly: '+anly, 10, 80);
-		c.fillText('speedx:'+playerXSpeed, 10, 100);
-		c.fillText('speedy:'+playerYSpeed, 10, 120);
 
 		// Set the circle radius
 		// TODO: make this always be 65 when it's only used on mobile
@@ -124,33 +144,136 @@ function draw() {
 	
 	// Player physics
 	playerYSpeed += gravity;
-		
 	playerX += playerXSpeed;
 	playerY += playerYSpeed;
-	if (playerY >= (height-50)) {
+	
+	// Interpret player input
+	if (heldKeys[65]) {
+		// Left
+		moveLeft();
+	}
+	if (heldKeys[87]) {
+		// Up
+		jump();
+	}
+	if (heldKeys[68]) {
+		// Right
+		moveRight();
+	}
+	if (heldKeys[83]) {
+		// Down
+	}
+	
+	// Ground collision detection
+	if (playerY >= (height-floorHeight)) {
 		grounded = 1;
-		playerYSpeed = 0;
-		playerY = height-50;
-		if (playerXSpeed > 0) {
-			playerXSpeed -= friction;
+		jumps = 0;
+		// Bounce off the ground
+		playerYSpeed *= -floorBounce;
+		// Stop bouncing when Y velocity is too low
+		if (Math.abs(playerYSpeed) < 0.5) playerYSpeed = 0;
+		// Set player position to be on the floor
+		playerY = height-floorHeight;
+		// Apply friction when not holding left or right
+		if (!(heldKeys[65] || heldKeys[68])) {
+			if (playerXSpeed > 0) {
+				playerXSpeed -= friction;
+			}
+			else if (playerXSpeed < 0) {
+				playerXSpeed += friction;
+			}
 		}
-		else if (playerXSpeed < 0) {
-			playerXSpeed += friction;
+		// Stop movement when X velocity is too low
+		if (Math.abs(playerXSpeed) < 0.25) {
+			playerXSpeed = 0;
 		}
+	} else {
+		// If coming off the ground, add a jump
+		if (grounded == 1) jumps++;
+		grounded = 0;
 	}
-	if (playerX >= (width-50)) {
-		playerXSpeed = 0;
-		playerX = width-50;
+	
+	// Right wall collision detection
+	if (playerX >= (width-40)) {
+		playerXSpeed *= -wallBounce;
+		playerX = width-40;
 	}
-	if (playerX <= 50) {
-		playerXSpeed = 0;
-		playerX = 50;
+	// Left wall collision detection
+	if (playerX <= 0) {
+		playerXSpeed *= -wallBounce;
+		playerX = 0;
 	}
+	
 	c.beginPath();
 	c.strokeStyle = "rgba(0, 0, 255, 0.5)";
 	c.rect(playerX, playerY, 40, 40);
 	c.stroke();
 }//draw
+
+// Player movement functions
+function jump() {
+	if (jumps < maxJumps) {
+		playerYSpeed = -20;
+		if (jumps != 0) jumps++;
+	}
+}
+function moveLeft() {
+	if (playerXSpeed > -maxSpeed) {
+		playerXSpeed -= 1;
+	}
+}
+function moveRight() {
+	if (playerXSpeed < maxSpeed) {
+		playerXSpeed += 1;
+	}
+}
+
+document.onkeydown = function(event) {
+	/*if (lastEvent && lastEvent.keyCode == event.keyCode) {
+		return;
+	}*/
+	console.log(event.keyCode);
+	
+	if (event.keyCode == 87 && !heldKeys[87]) {
+		jump();
+	}
+	
+	heldKeys[event.keyCode] = true;
+}
+
+document.onkeyup = function(event) {
+	console.log(event.keyCode);
+	heldKeys[event.keyCode] = false;
+}
+
+document.onkeypress = function(event) {
+	/*if (event.keyCode == 87) {
+		if (jumps < maxJumps) {
+			playerYSpeed = -20;
+			if (jumps != 0) jumps++;
+		}
+	}*/
+}
+
+function checkKey(e) {
+
+    e = e || window.event;
+
+    if (e.keyCode == '38') {
+        // up arrow
+		console.log("hello");
+    }
+    else if (e.keyCode == '40') {
+        // down arrow
+    }
+    else if (e.keyCode == '37') {
+       // left arrow
+    }
+    else if (e.keyCode == '39') {
+       // right arrow
+    }
+
+}
 
 function onTouchStart(e) {
 	touch = e.touches[0];
