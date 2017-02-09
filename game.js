@@ -19,7 +19,7 @@ var playerX = width/2;
 var playerY = height/2;
 var playerXSpeed = 0;
 var playerYSpeed = 0;
-var gravity = 0.8;		// Downward acceleration
+var gravity = 0.8;		// Downward acceleration	(pixels/20ms^2)
 var friction = 0.40;	// Coefficient of friction
 var grounded = 0;		// True when player is on the ground
 var wallBounce = .50;	// Wall bounciness coefficient
@@ -29,9 +29,6 @@ var floorHeight = 70; 	// Pixels above bottom of window
 var jumps = 0;			// Number of jumps the player has made while in the air
 var maxJumps = 2;		// Single, double, or triple jump, etc.
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
-
-// Keyboard input
-//document.onkeydown = checkKey;
 
 // Initial the canvas
 setupCanvas();
@@ -52,6 +49,8 @@ window.onresize = resetCanvas;
 
 // Call the draw method every 20 milliseconds
 setInterval(draw, 20);
+// Calculate player physics every 20 ms
+setInterval(physics, 20);
 
 function setupCanvas() {
 	// Create a <canvas> HTML tag
@@ -87,61 +86,8 @@ function init() {
 	//PETER WUZ HERE
 }//init
 
-function draw() {
-	// Erase the entire canvas
-    c.clearRect(0, 0, canvas.width, canvas.height);
-	c.lineWidth = "10";
-	
-	c.fillText('X velocity: '+playerXSpeed, 10, 100);
-	c.fillText('X position: '+playerX, 10, 120);
-	c.fillText('Y velocity: '+(-playerYSpeed), 10, 160);
-	c.fillText('Y position: '+(height-playerY), 10, 180);
-	c.fillText('On ground: '+grounded, 10, 220);
-	c.fillText('Jumps: '+jumps, 10, 240);
-	c.fillText('W: '+heldKeys[87], 10, 260);
-	c.fillText('A: '+heldKeys[65], 10, 280);
-	c.fillText('S: '+heldKeys[83], 10, 300);
-	c.fillText('D: '+heldKeys[68], 10, 320);
-	
-	// If touching the left half of the window
-    if ((touching && touch.clientX < halfX) || (mouseDown && baseX < halfX)) {
-		// Get the digital coordinates
-        var digDirection = getDigDirection();
-        var digx = digDirection.xdig;
-        var digy = digDirection.ydig;
-		// Get the analogue coordinates
-        var anlDirection = getDirection();
-        var anlx = anlDirection.xdir;
-        var anly = anlDirection.ydir;
-		
-		// Display the digital and analogue coords
-        c.fillText('digx: '+digx, 10, 20);
-        c.fillText('digy: '+digy, 10, 40);
-        c.fillText('anlx: '+anlx, 10, 60);
-        c.fillText('anly: '+anly, 10, 80);
-
-		// Set the circle radius
-		// TODO: make this always be 65 when it's only used on mobile
-		if (touching) circleRadius = 65;
-		else circleRadius = 50;
-		
-		// Draw the red circle (base)
-        c.beginPath();
-        c.strokeStyle = "rgba(255, 0, 0, 0.5)";
-        c.arc(baseX, baseY, circleRadius, 0, Math.PI*2, true);
-        c.stroke();
-
-		// Draw the green circle (stick)
-		c.beginPath();
-		c.strokeStyle = "rgba(0, 255, 0, 0.5)";
-		c.arc(circX, circY, circleRadius, 0, Math.PI*2, true);
-		c.stroke();
-		
-		playerYSpeed -= anly*2;
-		playerXSpeed += anlx;
-    }//if
-	
-	
+// Player physics
+function physics() {
 	// Player physics
 	playerYSpeed += gravity;
 	playerX += playerXSpeed;
@@ -203,11 +149,68 @@ function draw() {
 		playerXSpeed *= -wallBounce;
 		playerX = 0;
 	}
+}
+
+function draw() {
+	// Erase the entire canvas
+    c.clearRect(0, 0, canvas.width, canvas.height);
+	c.lineWidth = "10";
+	
+	c.fillText('X velocity: '+playerXSpeed, 10, 100);
+	c.fillText('X position: '+playerX, 10, 120);
+	c.fillText('Y velocity: '+(-playerYSpeed), 10, 160);
+	c.fillText('Y position: '+(height-playerY), 10, 180);
+	c.fillText('On ground: '+grounded, 10, 220);
+	c.fillText('Jumps: '+jumps, 10, 240);
+	c.fillText('W: '+heldKeys[87], 10, 260);
+	c.fillText('A: '+heldKeys[65], 10, 280);
+	c.fillText('S: '+heldKeys[83], 10, 300);
+	c.fillText('D: '+heldKeys[68], 10, 320);
 	
 	c.beginPath();
 	c.strokeStyle = "rgba(0, 0, 255, 0.5)";
 	c.rect(playerX, playerY, 40, 40);
 	c.stroke();
+	
+	// If touching the left half of the window
+    if ((touching && touch.clientX < halfX) || (mouseDown && baseX < halfX)) {
+		// Get the digital coordinates
+        var digDirection = getDigDirection();
+        var digx = digDirection.xdig;
+        var digy = digDirection.ydig;
+		// Get the analogue coordinates
+        var anlDirection = getDirection();
+        var anlx = anlDirection.xdir;
+        var anly = anlDirection.ydir;
+		
+		// Display the digital and analogue coords
+        c.fillText('digx: '+digx, 10, 20);
+        c.fillText('digy: '+digy, 10, 40);
+        c.fillText('anlx: '+anlx, 10, 60);
+        c.fillText('anly: '+anly, 10, 80);
+
+		// Set the circle radius
+		// TODO: make this always be 65 when it's only used on mobile
+		if (touching) circleRadius = 65;
+		else circleRadius = 50;
+		
+		// Draw the red circle (base)
+        c.beginPath();
+        c.strokeStyle = "rgba(255, 0, 0, 0.5)";
+        c.arc(baseX, baseY, circleRadius, 0, Math.PI*2, true);
+        c.stroke();
+
+		// Draw the green circle (stick)
+		c.beginPath();
+		c.strokeStyle = "rgba(0, 255, 0, 0.5)";
+		c.arc(circX, circY, circleRadius, 0, Math.PI*2, true);
+		c.stroke();
+		
+		
+		//playerYSpeed -= anly*2;
+		//playerXSpeed += anlx;
+    }//if
+	
 }//draw
 
 // Player movement functions
