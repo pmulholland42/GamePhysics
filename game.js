@@ -19,8 +19,11 @@ var wallBounce = 0.9;	// Wall bounciness coefficient
 var floorBounce = 0.0;	// Floor bounciness coefficient
 var maxSpeed = 10;		// Max horizontal speed for the player when on ground
 var jumpSpeed = 21;		// Vertical speed to apply when jumping
-var floorHeight = 70; 	// Pixels above bottom of window
+var floorHeight = 0; 	// Pixels above bottom of window
 var maxJumps = 2;		// Single, double, or triple jump, etc.
+
+var platform1Height = 250;
+var platform2Height = 500;
 
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
 
@@ -122,16 +125,8 @@ function physics() {
 	playerX += playerXSpeed;
 	playerY += playerYSpeed;
 	
-	// Ground collision detection
-	if (playerY >= (height-floorHeight)) {
-		grounded = true;
-		jumps = 0;
-		// Bounce off the ground
-		playerYSpeed *= -floorBounce;
-		// Stop bouncing when Y velocity is too low
-		if (Math.abs(playerYSpeed) < 0.50) playerYSpeed = 0;
-		// Set player position to be on the floor
-		playerY = height-floorHeight;
+	// If the player is on the ground
+	if (grounded) {
 		// Apply friction when not holding left or right
 		if (!(heldKeys[65] || heldKeys[68])) {
 			if (playerXSpeed > 0) {
@@ -142,10 +137,22 @@ function physics() {
 			}
 		}
 		// Stop movement when X velocity is too low
-		// This prevents occilating back and forth
+		// This prevents occilating back and forth from friction
 		if (Math.abs(playerXSpeed) < 0.50) {
 			playerXSpeed = 0;
 		}
+	}
+	
+	// Ground collision detection
+	if (playerY >= (height-floorHeight)) {
+		grounded = true;
+		jumps = 0;
+		// Bounce off the ground
+		playerYSpeed *= -floorBounce;
+		// Stop bouncing when Y velocity is too low
+		if (Math.abs(playerYSpeed) < 0.50) playerYSpeed = 0;
+		// Set player position to be on the floor
+		playerY = height-floorHeight;
 	} else {
 		grounded = false;
 	}
@@ -165,6 +172,20 @@ function physics() {
 		playerYSpeed *= -wallBounce;
 		playerY = 0;
 	}
+	
+	// Platform collision
+	// It would be nice not to hard code this but...
+	if (playerX < width/3) {
+		// Only collide with platform while falling
+		// (Positive Y velocity == going down)
+		if (playerYSpeed >= 0) {
+			if (Math.abs(playerY-(height-platform1Height)) < 5) {
+				playerYSpeed = 0;
+				playerY = height-platform1Height;
+				grounded = true;
+			}
+		}
+	}
 }
 
 // Render the canvas - called every 20ms
@@ -175,9 +196,9 @@ function draw() {
 	
 	// Display stats
 	c.fillText('X velocity: '+playerXSpeed, 10, 40);
-	c.fillText('X position: '+playerX, 10, 60);
+	c.fillText('X position: '+Math.floor(playerX), 10, 60);
 	c.fillText('Y velocity: '+(-playerYSpeed), 10, 100);
-	c.fillText('Y position: '+(height-playerY), 10, 120);
+	c.fillText('Y position: '+Math.floor(height-playerY), 10, 120);
 	c.fillText('On ground: '+grounded, 10, 160);
 	c.fillText('Jumps: '+jumps, 10, 180);
 	c.fillText('W: '+heldKeys[87], 10, 200);
@@ -185,10 +206,16 @@ function draw() {
 	c.fillText('S: '+heldKeys[83], 10, 240);
 	c.fillText('D: '+heldKeys[68], 10, 260);
 	
+	// Draw platform 1
+	c.beginPath();
+	c.strokeStyle = "rgba(0, 200, 200, 0.9)";
+	c.rect(0, height-platform1Height, width/3, 0);
+	c.stroke();
+	
 	// Draw the player (blue square)
 	c.beginPath();
 	c.strokeStyle = "rgba(0, 0, 255, 0.5)";
-	c.rect(playerX, playerY, 40, 40);
+	c.rect(playerX, playerY-50, 40, 40);
 	c.stroke();
 }
 
