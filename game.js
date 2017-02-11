@@ -6,8 +6,8 @@ var width = window.innerWidth;
 var height = window.innerHeight;
 
 // Player physics variables
-var playerX = width/2;	// Player position starts in the middle of the screen
-var playerY = height/2;
+var playerX = width/6-70;	// Player position starts in the middle of the screen
+var playerY = height-70;
 var previousX = playerX;// Player position from the last function call
 var previousY = playerY;// We keep track of these in case the player moves too fast and flies through the floor
 var playerXSpeed = 0;	// Velocity is measured in pixels per 20ms
@@ -18,6 +18,7 @@ var jumps = 0;			// Number of jumps the player has made while in the air
 var dropping = false;	// Prevents collisions with platforms when dropping down through them
 var facing = 'right';	// Which way the player is facing
 var gravDir = 'down';	// Gravity direction
+var winner = false;
 
 // Sprites
 var snekman_down_right;
@@ -28,6 +29,9 @@ var snekman_left_up;
 var snekman_left_down;
 var snekman_right_up;
 var snekman_right_down;
+var snek;
+var door;
+var bg;
 
 // Adjustable values:
 var gravity = 0.7;		// Downward acceleration (pixels per 20ms^2)
@@ -64,6 +68,8 @@ function init() {
 	// Initial the canvas
 	setupCanvas();
 	
+	document.body.style.background = "url('bg.jpg')";
+	
 	// PUBNUB
 	var pubnub = PUBNUB.init({
 		subscribe_key: 'sub-c-9609aa90-f010-11e6-9032-0619f8945a4f',
@@ -72,20 +78,22 @@ function init() {
 	pubnub.subscribe({
     channel: "con", // Subscribe to our random channel.
     message: function(m) {
-		console.log(m);
+		//console.log(m);
         // Handle the message.
         var key = Object.keys(m);
-		c.fillText('anlx:'+m.anlx+' anly'+m.anly+' digx'+m.digx+' digy'+m.digy, 10, 300);
+		//console.log(m);
+		c.fillText('analx:'+m.analx+' analy'+m.analy, 10, 300);
 
         if(key == "log") {
 			console.log(m.log);
+			
         }
         else {
 			inputTimer = 0;
-			heldKeys[65] = m.anlx < -.35;//A
-			heldKeys[68] = m.anlx > .35;	//D
-			heldKeys[83] = m.anly < -.35;//S
-			heldKeys[87] = m.anly > .35;	//W
+			heldKeys[65] = m.xdig < -.35;//A
+			heldKeys[68] = m.xdig > .35;	//D
+			heldKeys[83] = m.ydig < -.35;//S
+			heldKeys[87] = m.ydig > .35;	//W
 
 		}
     }
@@ -101,6 +109,9 @@ function init() {
 	snekman_left_down = document.createElement( 'img' );
 	snekman_right_up= document.createElement( 'img' ); 
 	snekman_right_down = document.createElement( 'img' );
+	snek = document.createElement('img');
+	door = document.createElement('img');
+	bg = document.createElement('img');
 	snekman_down_right.src = "snekman_down_right.png";
 	snekman_down_left.src = "snekman_down_left.png";
 	snekman_up_right.src = "snekman_up_right.png";
@@ -109,6 +120,14 @@ function init() {
 	snekman_left_down.src = "snekman_left_down.png";
 	snekman_right_up.src = "snekman_right_up.png";
 	snekman_right_down.src = "snekman_right_down.png";
+	snek.src = "snekkk.png";
+	door.src = "door.png";
+	bg.src = "bg.jpg";
+	
+	snekHead = {'health': 3, 'x': width/4, 'y': height - platform1Height, 'dir': "left", 'next': null, 'prev': null, 'time':0};
+	var newSnek = {'health': 3, 'x':3*width/4, 'y': height - platform2Height, 'dir': "right", 'next': null, 'prev': snekHead, 'time':0};
+	snekHead.next = newSnek;
+	snekCount++;
 	
 	// These functions are called every 20 milliseconds:
 	// Parse the input - from keyboard for now
@@ -220,7 +239,7 @@ function parseInput() {
 	}
 	if (heldKeys[81]) { // Q
 		if (playerX > 5*width/6 && playerY == height-floorHeight) {
-			console.log("You win!");
+			winner = true;
 		}
 	}
 }
@@ -446,6 +465,17 @@ function physics() {
 	while (currProj != null) {
 		currProj.y += currProj.yV;
 		currProj.x += currProj.xV;
+		if (Math.abs(currProj.y-(height-platform1Height)) < 60) { 
+			if (Math.abs(snekHead.x - currProj.x) < 10 && snekHead.time == 0) {
+				snekHead.health--;
+				snekHead.time = 5;
+			}
+		} else if (Math.abs(currProj.y-(height-platform2Height)) < 60) {
+			if (Math.abs(snekHead.next.x - currProj.x) < 10 && snekHead.next.time == 0) {
+				snekHead.next.health--;
+				snekHead.time = 5;
+			}
+		}
 		if (currProj.x < 0 || currProj.x > width || currProj.y < -100 || currProj.y > height) {
 			// Remove this from the linked list
 			if (currProj != projHead) {
@@ -462,16 +492,37 @@ function physics() {
 		}
 		currProj = currProj.next;
 	}
+	
+	// Snake physics
+	var currSnek = snekHead;
+	while (currSnek != null) {
+		if (currSnek.time != 0) currSnek.time--;
+		if (currSnek.dir == "left") {
+			currSnek.x--;
+			if ((currSnek.x < width/6 && currSnek == snekHead) || (currSnake.x < 2*width/3 && currSnek != snekHead)) {
+				currSnek.dir = "right";
+			}
+		} else {
+			currSnek.x++;
+			if ((currSnek.x > width/3 && currSnek == snekHead) || (currSnake.x > 5*width/6 && currSnek != snekHead)) {
+				currSnek.dir = "left";
+			}
+		}
+		currSnek = currSnek.next;
+	}
 }
 
 // Render the canvas - called every 20ms
 function draw() {
+	
+	c.font="15px Verdana";
 	// Erase the current canvas
     c.clearRect(0, 0, width, height);
+	c.drawImage(bg, 0, 0, width, height);
 	c.lineWidth = "10";
 	
 	// Display stats
-	c.fillText('X velocity: '+playerXSpeed, 10, 40);
+	/*c.fillText('X velocity: '+playerXSpeed, 10, 40);
 	c.fillText('X position: '+Math.floor(playerX), 10, 60);
 	c.fillText('Width: ' + width, 10, 80);
 	c.fillText('Y velocity: '+(-playerYSpeed), 10, 100);
@@ -482,25 +533,38 @@ function draw() {
 	c.fillText('W: '+heldKeys[87], 10, 200);
 	c.fillText('A: '+heldKeys[65], 10, 220);
 	c.fillText('S: '+heldKeys[83], 10, 240);
-	c.fillText('D: '+heldKeys[68], 10, 260);
+	c.fillText('D: '+heldKeys[68], 10, 260);*/
+	
+	if (winner) {
+		c.font="60px Verdana";
+		c.fillText("You win!", width/2-120, height/2);
+		c.font="15px Verdana";
+	}
 	
 	c.beginPath();
-	c.strokeStyle = "rgba(0, 200, 200, 0.9)";
+	c.strokeStyle = "rgba(0, 200, 0, 0.9)";
+	c.fillStyle = "green";
 	// Draw platform 1 (hardcoded)
-	c.rect(width/6, height-platform1Height, width/6, 0);
-	c.rect(width/6, height-platform1Height, 0, platform1Height);
-	c.rect(width/3, height-platform1Height, 0, platform1Height);
+	c.rect(width/6, height-platform1Height, width/6, platform1Height);
 	// Draw platform 2 (hardcoded)
-	c.rect(2*width/3, height-platform2Height, width/6, 0);
-	c.rect(2*width/3, height-platform2Height, 0, platform2Height);
-	c.rect(5*width/6, height-platform2Height, 0, platform2Height);
+	c.rect(2*width/3, height-platform2Height, width/6, platform2Height);
+	c.fill();
+	
 	c.stroke();
-	c.fillText('Press Q to go through the door', 5*width/6+80, height-floorHeight-80);
+	c.fillStyle = "white";
+	c.fillText('Press Q to go through doors.', 5*width/6+10, height-floorHeight-140);
+	c.fillText('Click to begin.', width/6-180, height-floorHeight-140);
+	c.fillText('Use W A S D to move.', width/6-200, height-floorHeight-120);
+	c.fillText('Press E to fire your weapon.', width/6+50, height-platform1Height-90);
+	c.fillText('Use I J K L to change the direction of gravity.', width/2-100, height/2);
 	c.beginPath();
 	// Draw the door
+	c.drawImage(door, 5*width/6+80, height-floorHeight-120, 60, 120);
+	
 	c.strokeStyle = "rgba(128, 0, 0, 0.9)";
+	/*
 	c.rect(5*width/6+80, height-floorHeight-70, 40, 80);
-	c.stroke();
+	c.stroke();*/
 	
 	// Draw the player
 	if (gravDir == 'down') {
@@ -529,11 +593,12 @@ function draw() {
 		}
 	}
 	
+	/*
 	c.beginPath();
 	c.lineWidth = "2";
 	c.strokeStyle = "rgba(255, 0, 0, 0.7)";
 	c.rect(playerX, playerY, 2, 2);
-	c.stroke();
+	c.stroke();*/
 	
 	// Draw the projectiles by iterating through the linked list
 	if (projCount != 0) {
@@ -544,6 +609,22 @@ function draw() {
 			c.strokeStyle = "rgba(255, 0, 0, 0.7)";
 			c.rect(currProj.x, currProj.y, 5, 5);
 			c.stroke();
+		}
+	}
+	
+	// Draw the snakes
+	if (snekCount != 0) {
+		var currSnek;
+		for (currSnek = snekHead; currSnek != null; currSnek = currSnek.next) {
+			if (currSnek.health > 0) {
+				c.fillText("Snek", currSnek.x-9, currSnek.y-70);
+				c.fillText("HP: "+currSnek.health, currSnek.x-10, currSnek.y-50);
+				c.beginPath();
+				c.lineWidth = "5";
+				c.strokeStyle = "rgba(0, 200, 0, 0.7)";
+				c.rect(currSnek.x, currSnek.y-((currSnek.health*10)+10), 5, (currSnek.health*10)+10);
+				c.stroke();
+			}
 		}
 	}
 }

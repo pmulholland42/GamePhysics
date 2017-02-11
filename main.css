@@ -1,5 +1,5 @@
 canvas{
-    background-color:#999999;
+    background-color:transparent;
     display:block;
     position:absolute;
 }
@@ -11,3 +11,5 @@ body{
     text-align:center;
     background-color:#ff0000;
 }
+
+
