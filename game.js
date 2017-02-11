@@ -29,13 +29,13 @@ var maxJumps = 2;		// Single, double, or triple jump, etc.
 var projSpeed = 15;		// Velocity of projectiles shot by player
 var projCooldown = 10;	// Number of ticks till you can shoot again
 
-// Projectile stuff
+// Projectile linked list variables
 var projHead = null;	// Head of the projectile linked list
 var projLast = null;	// Last element of projectile linked list
 var projCount = 0;		// Number of player projectiles
 var projTimer = 0;		// Projectile cooldown timer
-var projLock = false;	// Mutex for linked list access 
 
+// Platform data
 var platform1Height = 250;
 var platform2Height = 500;
 
@@ -145,12 +145,15 @@ function dropDown() {
 	}
 }
 function shoot() {
-	// !!!!Notice to future readers: this is a failed-ish attempt at a linked list. Tread lightly and beware!!!!
+	// This adds a projectile json to the linked list
 	if (projTimer == 0) {
+		
+		// Projectile speed is set to negative or positive depending on player orientation
 		var speed = 0;
 		if (facing == 'left') speed = -projSpeed;
 		else if (facing == 'right') speed = projSpeed;
 		
+		// Linked lists man. You either do em or you dont
 		var currProj = {'x': playerX, 'y': playerY-40, 'yV': 0, 'xV': speed, 'next': null, 'prev': null};
 		if (projCount == 0) {
 			projHead = currProj;
@@ -158,7 +161,6 @@ function shoot() {
 			projLast.next = currProj;
 			currProj.prev = projLast;
 		}
-		console.log(currProj);
 		projLast = currProj;
 		
 		projCount++;
@@ -299,7 +301,6 @@ function draw() {
 	if (projCount != 0) {
 		var currProj;
 		for (currProj = projHead; currProj != null; currProj = currProj.next) {
-			console.log(currProj);
 			c.beginPath();
 			c.lineWidth = "5";
 			c.strokeStyle = "rgba(255, 0, 0, 0.7)";
