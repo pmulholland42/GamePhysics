@@ -8,19 +8,30 @@ var height = window.innerHeight;
 // Physics variables
 var playerX = width/2;	// Player position starts in the middle of the screen
 var playerY = height/2;
+var previousX = playerX;// Player position from the last function call
+var previousY = playerY;// We keep track of these in case the player moves too fast and flies through the floor
 var playerXSpeed = 0;	// Velocity is measured in pixels per 20ms
 var playerYSpeed = 0;
 var grounded = false;	// True when player is on the ground
 var jumps = 0;			// Number of jumps the player has made while in the air
+var dropping = false;	// Prevents collisions with platforms when dropping down through them
 // Adjustable values:
 var gravity = 0.7;		// Downward acceleration (pixels per 20ms^2)
 var friction = 0.7;		// Coefficient of friction on ground
-var wallBounce = 0.9;	// Wall bounciness coefficient
-var floorBounce = 0.0;	// Floor bounciness coefficient
+var wallBounce = 0.8;	// Wall bounciness coefficient
+var floorBounce = 0;	// Floor bounciness coefficient
 var maxSpeed = 10;		// Max horizontal speed for the player when on ground
 var jumpSpeed = 21;		// Vertical speed to apply when jumping
 var floorHeight = 0; 	// Pixels above bottom of window
 var maxJumps = 2;		// Single, double, or triple jump, etc.
+
+var projectiles = {};	// Things the player shoots
+var projectileCount = 0;// Number of player projectiles
+
+var projectile;
+var previous;
+var last;
+var pTimer = 0;
 
 var platform1Height = 250;
 var platform2Height = 500;
@@ -96,6 +107,12 @@ function parseInput() {
 	}
 	if (heldKeys[83]) {
 		// Down
+		dropDown();
+	}
+	if (heldKeys[76]) {
+		console.log("hi");
+		// Shoot
+		shoot();
 	}
 }
 
@@ -115,6 +132,31 @@ function moveLeft() {
 function moveRight() {
 	if (playerXSpeed < maxSpeed) {
 		playerXSpeed += 1;
+	}
+}
+function dropDown() {
+	if (grounded && !dropping && playerY != height-floorHeight) {
+		playerYSpeed = -5;
+		dropping = true;
+	}
+}
+function shoot() {
+	// Notice to future readers: this is a failed attempt at a linked list. Tread lightly and beware.
+	if (pTimer == 0) {
+		pTimer = 7;
+		// Projectiles have x and y coords and x and y velocities. Also it's a linked list, hooray.
+		if (projectileCount == 0) {
+			var p = {'x': playerX, 'y': playerY-40, 'yV': 0, 'xV': 15, 'next': NaN, 'prev': NaN};
+			projectile = p;
+			projectileCount -= 10;
+		} else {
+			var p = {'x': playerX, 'y': playerY-40, 'yV': 0, 'xV': 15, 'next': NaN, 'prev': previous};
+			previous.next = p;
+		}
+		last = p;
+		previous = p;
+		// If we run out of memory this is why
+		//projectileCount++;	
 	}
 }
 
@@ -175,14 +217,34 @@ function physics() {
 	
 	// Platform collision
 	// It would be nice not to hard code this but...
-	if (playerX < width/3) {
-		// Only collide with platform while falling
-		// (Positive Y velocity == going down)
-		if (playerYSpeed >= 0) {
-			if (Math.abs(playerY-(height-platform1Height)) < 5) {
-				playerYSpeed = 0;
-				playerY = height-platform1Height;
-				grounded = true;
+	if ((playerX < width/3) && (previousY <= (height-platform1Height)) && playerY >= (height-platform1Height)) {
+		// If player is dropping down fall through
+		if (dropping) {
+			dropping = false;
+		// If they're not, and they're moving downward, collide with platform
+		} else if (playerYSpeed >= 0) {
+			playerYSpeed *= -floorBounce;
+			playerY = height-platform1Height;
+			grounded = true;
+		}
+	}
+	
+	// Keep track of last position (this is for collision detection)
+	previousX = playerX;
+	previousY = playerY;
+	
+	// Projectile physics
+	// Iterate through the linked list of projectiles and move them
+	if (pTimer != 0) pTimer--;
+	if (projectileCount != 0) {
+			for (var p = projectile; p.next != NaN; p = p.next) {
+			p.y += p.yV;
+			p.x += p.xV;
+			if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+				// Remove this from the linked list
+				//projectileCount--;
+				p.prev.next = p.next;
+				p.next.prev = p.prev;
 			}
 		}
 	}
@@ -201,10 +263,11 @@ function draw() {
 	c.fillText('Y position: '+Math.floor(height-playerY), 10, 120);
 	c.fillText('On ground: '+grounded, 10, 160);
 	c.fillText('Jumps: '+jumps, 10, 180);
-	c.fillText('W: '+heldKeys[87], 10, 200);
+	c.fillText('Projectiles: '+projectileCount, 10, 200);
+	/*c.fillText('W: '+heldKeys[87], 10, 200);
 	c.fillText('A: '+heldKeys[65], 10, 220);
 	c.fillText('S: '+heldKeys[83], 10, 240);
-	c.fillText('D: '+heldKeys[68], 10, 260);
+	c.fillText('D: '+heldKeys[68], 10, 260);*/
 	
 	// Draw platform 1
 	c.beginPath();
@@ -217,6 +280,15 @@ function draw() {
 	c.strokeStyle = "rgba(0, 0, 255, 0.5)";
 	c.rect(playerX, playerY-50, 40, 40);
 	c.stroke();
+	
+	// Draw the projectiles by iterating through the linked list
+	for (var p = projectile; projectile.next != NaN; p = p.next) {
+		c.beginPath();
+		c.lineWidth = "5";
+		c.strokeStyle = "rgba(255, 0, 0, 0.7)";
+		c.rect(p.x, p.y, 5, 5);
+		c.stroke();
+	}
 }
 
 
