@@ -56,6 +56,8 @@ var snekCount = 0;
 var platform1Height = 220;
 var platform2Height = 600;
 
+var inputTimer = 0;
+
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
 
 function init() {
@@ -73,16 +75,17 @@ function init() {
 		console.log(m);
         // Handle the message.
         var key = Object.keys(m);
-
+		c.fillText('anlx:'+m.anlx+' anly'+m.anly+' digx'+m.digx+' digy'+m.digy, 10, 300);
 
         if(key == "log") {
 			console.log(m.log);
         }
         else {
-			heldKeys[65] = m.digx == -1;
-			heldKeys[68] = m.digx == 1;
-			heldKeys[83] = m.digy == -1;
-			heldKeys[87] = m.digy == 1;
+			inputTimer = 0;
+			heldKeys[65] = m.anlx < -.35;//A
+			heldKeys[68] = m.anlx > .35;	//D
+			heldKeys[83] = m.anly < -.35;//S
+			heldKeys[87] = m.anly > .35;	//W
 
 		}
     }
@@ -157,6 +160,14 @@ document.onkeyup = function(event) {
 
 // Interpret player input - called every 20ms
 function parseInput() {
+	inputTimer++;
+	/*if (inputTimer > 7) {
+		heldKeys[65] = false;//A
+		heldKeys[68] = false;	//D
+		heldKeys[83] = false;//S
+		heldKeys[87] = false;	//W
+	}*/
+	
 	// Check the heldKeys array to see what the current input is
 	if (heldKeys[65]) { // A
 		if (gravDir == 'down' || gravDir == 'up') {
@@ -310,6 +321,7 @@ function shoot() {
 
 // Calculate player physics - called every 20ms
 function physics() {
+	
 	// Player physics
 	// Gravity
 	if (gravDir == 'down') {
@@ -434,7 +446,7 @@ function physics() {
 	while (currProj != null) {
 		currProj.y += currProj.yV;
 		currProj.x += currProj.xV;
-		if (currProj.x < 0 || currProj.x > width || currProj.y < 0 || currProj.y > height) {
+		if (currProj.x < 0 || currProj.x > width || currProj.y < -100 || currProj.y > height) {
 			// Remove this from the linked list
 			if (currProj != projHead) {
 				currProj.prev.next = currProj.next;
@@ -466,7 +478,7 @@ function draw() {
 	c.fillText('Y position: '+Math.floor(height-playerY), 10, 120);
 	c.fillText('Gravity: '+gravDir, 10, 160);
 	c.fillText('Facing: '+facing, 10, 180);
-	//c.fillText('Projectiles: '+projCount, 10, 200);
+	c.fillText('Projectiles: '+projCount, 10, 140);
 	c.fillText('W: '+heldKeys[87], 10, 200);
 	c.fillText('A: '+heldKeys[65], 10, 220);
 	c.fillText('S: '+heldKeys[83], 10, 240);
