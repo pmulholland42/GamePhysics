@@ -59,45 +59,57 @@ var snekCount = 0;
 // Platform data
 var platform1Height = 220;
 var platform2Height = 600;
+var count = 0;
 
-var inputTimer = 0;
+var timeywimey = 0;
 
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
+
+// Good stuff
+
+		var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');
+drone.on('open', function (error) {
+  if (error) {
+    return console.error(error);
+  }
+  var room = drone.subscribe('my_game');
+  room.on('open', function (error) {
+    if (error) {
+      console.error(error);
+    } else {
+      console.log('Connected to room');
+    }
+  });
+  room.on('data', function (data) {
+  // Received data from room
+  stuff = data;
+  //console.log(data);
+		console.log(data);
+		count++;
+		heldKeys[68] = data.xdig > 0;
+		heldKeys[65] = data.xdig < 0;
+		heldKeys[87] = data.ydig > 0;
+			heldKeys[69] = (data.log === "tapFunction");
+		heldKeys[73] = (data.log === "swipeUFunction");
+		heldKeys[74] = (data.log === "swipeLFunction");
+		heldKeys[75] = (data.log === "swipeDFunction");
+		heldKeys[76] = (data.log === "swipeRFunction");
+		heldKeys[81] = (data.log === "doubleTapFunction");
+  });
+  
+});
+
+drone.on('error', function(error){
+	console.log(error);
+});
+
+
 
 function init() {
 	// Initial the canvas
 	setupCanvas();
 	
 	document.body.style.background = "url('bg.jpg')";
-	
-	// PUBNUB
-	var pubnub = PUBNUB.init({
-		subscribe_key: 'sub-c-9609aa90-f010-11e6-9032-0619f8945a4f',
-		publish_key: 'pub-c-62822c7d-339b-4abc-9e87-fb6671883787'
-	});
-	pubnub.subscribe({
-    channel: "con", // Subscribe to our random channel.
-    message: function(m) {
-		//console.log(m);
-        // Handle the message.
-        var key = Object.keys(m);
-		//console.log(m);
-		c.fillText('analx:'+m.analx+' analy'+m.analy, 10, 300);
-
-        if(key == "log") {
-			console.log(m.log);
-			
-        }
-        else {
-			inputTimer = 0;
-			heldKeys[65] = m.xdig < -.35;//A
-			heldKeys[68] = m.xdig > .35;	//D
-			heldKeys[83] = m.ydig < -.35;//S
-			heldKeys[87] = m.ydig > .35;	//W
-
-		}
-    }
-	});
 
 	
 	// Load in all the sprites
@@ -128,6 +140,7 @@ function init() {
 	var newSnek = {'health': 3, 'x':3*width/4, 'y': height - platform2Height, 'dir': "right", 'next': null, 'prev': snekHead, 'time':0};
 	snekHead.next = newSnek;
 	snekCount++;
+
 	
 	// These functions are called every 20 milliseconds:
 	// Parse the input - from keyboard for now
@@ -179,13 +192,6 @@ document.onkeyup = function(event) {
 
 // Interpret player input - called every 20ms
 function parseInput() {
-	inputTimer++;
-	/*if (inputTimer > 7) {
-		heldKeys[65] = false;//A
-		heldKeys[68] = false;	//D
-		heldKeys[83] = false;//S
-		heldKeys[87] = false;	//W
-	}*/
 	
 	// Check the heldKeys array to see what the current input is
 	if (heldKeys[65]) { // A
@@ -311,6 +317,7 @@ function dropDown() {
 	}
 }
 function shoot() {
+	timeywimey--;
 	// This adds a projectile json to the linked list
 	if (projTimer == 0) {
 		
@@ -552,11 +559,10 @@ function draw() {
 	
 	c.stroke();
 	c.fillStyle = "white";
-	c.fillText('Press Q to go through doors.', 5*width/6+10, height-floorHeight-140);
-	c.fillText('Click to begin.', width/6-180, height-floorHeight-140);
-	c.fillText('Use W A S D to move.', width/6-200, height-floorHeight-120);
-	c.fillText('Press E to fire your weapon.', width/6+50, height-platform1Height-90);
-	c.fillText('Use I J K L to change the direction of gravity.', width/2-100, height/2);
+	c.fillText('Double tap to open door.', 5*width/6+10, height-floorHeight-140);
+	c.fillText('Use the joystick to move.', width/6-200, height-floorHeight-120);
+	c.fillText('Tap to fire your weapon.', width/6+50, height-platform1Height-90);
+	c.fillText('Swipe to change the direction of gravity.', width/2-100, height/2);
 	c.beginPath();
 	// Draw the door
 	c.drawImage(door, 5*width/6+80, height-floorHeight-120, 60, 120);
